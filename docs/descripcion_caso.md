@@ -1,0 +1,44 @@
+# Descripción del caso práctico
+
+## Título
+
+**Comparación exploratoria de las demandas físicas según la posición en partidos de fútbol de academia/reservas**
+
+## Pregunta
+
+¿Cómo varían la distancia total, la distancia de alta intensidad, la distancia de sprint y la velocidad máxima observadas en partido entre defensas, centrocampistas y atacantes?
+
+## Justificación
+
+Las funciones de los jugadores pueden asociarse a perfiles de desplazamiento distintos. Describir esas métricas ayuda a contextualizar demandas por grupo posicional y a plantear preguntas para el diseño de tareas. Este análisis no basta para prescribir cargas individuales ni atribuir causalidad.
+
+## Datos y disponibilidad
+
+Se utiliza **Physical Profiling**, de Ole J. Kemi, alojado en Zenodo (2024), DOI [10.5281/zenodo.13919745](https://doi.org/10.5281/zenodo.13919745), licencia CC BY 4.0. Se extrae la hoja **Academy Game Data**, que contiene 62 filas, cuatro de ellas vacías; quedan 58 registros de rendimiento en partido de jugadores de academia/reservas. La publicación presenta además hojas de entrenamientos y primer equipo, pero el caso se acota a la hoja de partidos de academia.
+
+Variables disponibles: fecha, squad, tipo de fixture, localía, rival, posición, minutos disputados, distancia total (m), metros por minuto, distancia de alta intensidad (m), distancia de sprint (m), velocidad máxima (m/s) y tiempo sobre 85% de FC máxima. La fuente no ofrece identificador persistente de jugador, resultado del partido, ni recuento de aceleraciones o sprints; no se inventarán. Cuatro filas completamente vacías se excluyen en la limpieza.
+
+## Preparación
+
+Se validan nombres y tipos, se revisan faltantes y duplicados, se estandarizan las seis etiquetas de posición disponibles (AW, CF, FB, CB, CDM y CAM) y se agrupan como defensas (CB/FB), centrocampistas (CDM/CAM) y atacantes (AW/CF). Se calculan distancia total, distancia de alta intensidad y distancia de sprint por 90 minutos, además de convertir velocidad máxima a km/h. Los valores originales también se conservan.
+
+## Análisis y comunicación
+
+Se presentan conteos y estadísticos descriptivos por grupo (media, mediana, desviación estándar, mínimo y máximo), gráficos de cajas, barras de medias con dispersión, un diagrama de minutos frente a distancia y un histograma. Se usa Kruskal–Wallis como comparación exploratoria de una métrica por grupo; el resultado no se interpreta como evidencia generalizable dada la muestra pequeña, la estructura repetida por partido y la falta de ajuste por rival/contexto.
+
+Herramientas: R, `readxl`, `readr`, `dplyr`, `tidyr`, `ggplot2` y Quarto. El análisis es reproducible a partir del CSV incluido; otro script permite reconstruirlo desde el XLSX original.
+
+## Límites
+
+La muestra es pequeña y procede de un equipo/plantel y periodo concretos, no de una población amplia de fútbol profesional. No se dispone de identificador de jugador que permita detectar participaciones repetidas, y agrupar las posiciones disponibles a tres categorías reduce detalle táctico. No hay datos de aceleraciones, recuento de sprints ni marcador para la hoja seleccionada. El estudio es descriptivo y no demuestra que la posición cause las diferencias observadas. Las métricas reflejan los umbrales y dispositivos usados por los autores.
+
+## Entregables del proyecto
+
+- Esta descripción del caso.
+- `reports/informe.qmd`, informe reproducible con código, resultados y gráficos.
+- Repositorio organizado con fuente de datos citada, scripts y README.
+
+## Referencias
+
+- Kemi, O. J. (2024). *Physical Profiling*. Zenodo. <https://doi.org/10.5281/zenodo.13919745>.
+- StatsBomb Open Data, consultado como contraste de disponibilidad: <https://github.com/statsbomb/open-data>. Publica eventos, alineaciones y 360 para partidos seleccionados, no las métricas GPS usadas aquí.

@@ -1,0 +1,19 @@
+# Archivo original de Zenodo (154 MB); se reconstruye con el script de descarga.
+data/raw/*.xlsx
+# Datos y salidas generados localmente.
+data/processed/*
+figures/*
+!figures/.gitkeep
+*.html
+*.knit.md
+reports/*_files/
+reports/rendered/
+*.docx
+!descripcion_caso_entrega.docx
+.Rlib/
+.Rhistory
+.RData
+.Rproj.user/
+.quarto/
+**/*.quarto_ipynb
+work/

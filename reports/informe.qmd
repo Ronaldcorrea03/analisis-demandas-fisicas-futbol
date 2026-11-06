@@ -1,0 +1,150 @@
+---
+title: "Demandas físicas por posición en partidos de fútbol"
+subtitle: "Análisis reproducible del conjunto Physical Profiling"
+author: "Ronald Snayder Correa Roncancio"
+lang: es
+date: "2026-11-06"
+format:
+  html:
+    toc: true
+    toc-depth: 2
+    number-sections: true
+    theme: cosmo
+    code-fold: false
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r}
+#| label: setup
+paquetes <- c("readr", "dplyr", "tidyr", "ggplot2", "knitr")
+faltan <- paquetes[!vapply(paquetes, requireNamespace, logical(1), quietly = TRUE)]
+if (length(faltan)) stop("Instala los paquetes antes de renderizar: ", paste(faltan, collapse = ", "))
+
+if (!file.exists("data/processed/academy_game_data_clean.csv")) {
+  source("scripts/01_prepare_data.R")
+}
+datos <- readr::read_csv("data/processed/academy_game_data_clean.csv", show_col_types = FALSE)
+datos_pos <- dplyr::filter(datos, !is.na(grupo_posicion))
+```
+
+# Introducción
+
+Las demandas físicas de un futbolista dependen de su rol, del tiempo de participación y del contexto del partido. Este informe describe diferencias por grupo posicional en partidos registrados en el conjunto *Physical Profiling*. Se trabaja con la hoja **Academy Game Data**, no con datos de GPS privados de Catapult, Wyscout o StatsBomb.
+
+La pregunta es: **¿cómo varían la distancia total, la distancia de alta intensidad, la distancia de sprint y la velocidad máxima entre defensas, centrocampistas y atacantes?**
+
+# Datos y metodología
+
+El archivo original contiene 62 filas, cuatro completamente vacías. Tras retirarlas queda una muestra de `r nrow(datos)` registros, con `r dplyr::n_distinct(datos$rival)` rivales. La fuente no aporta un identificador persistente de jugador para detectar participaciones repetidas. La muestra corresponde a jugadores de academia/reservas, por lo que no se presenta como representación de jugadores profesionales de primer equipo.
+
+Las posiciones CB y FB se agrupan como defensas; CDM y CAM como centrocampistas; AW y CF como atacantes. Se usan las métricas tal como aparecen en la fuente y se derivan distancias por 90 minutos y velocidad máxima en km/h. Estas normalizaciones describen tasas por tiempo, no sustituyen la comparación de valores absolutos.
+
+```{r}
+#| label: tabla-datos
+knitr::kable(
+  data.frame(
+    Variable = c("Distancia total", "Distancia alta intensidad", "Distancia sprint", "Velocidad máxima", "Tiempo de juego"),
+    Uso = c("Volumen total de carrera", "Carrera de intensidad alta según la fuente", "Exposición a sprint según la fuente", "Pico de velocidad", "Contextualizar diferencias de participación"),
+    Unidad = c("m y m/90", "m y m/90", "m y m/90", "m/s y km/h", "min")
+  ), caption = "Variables principales"
+)
+```
+
+Se resumen observaciones por grupo con media, mediana, desviación estándar, mínimo y máximo. La comparación inferencial es exploratoria y se limita a Kruskal–Wallis para distancia total por 90 minutos. Con pocos registros, partidos potencialmente repetidos y sin ajuste por contexto, el valor p no demuestra una diferencia generalizable ni causal.
+
+# Resultados
+
+## Tamaño de los grupos
+
+```{r}
+conteos <- datos_pos |>
+  dplyr::count(grupo_posicion, name = "n")
+knitr::kable(conteos, caption = "Registros con posición agrupada")
+```
+
+## Estadísticos descriptivos
+
+```{r}
+resumen <- datos_pos |>
+  dplyr::group_by(grupo_posicion) |>
+  dplyr::summarise(
+    n = dplyr::n(),
+    media_total_m = mean(distancia_total_m, na.rm = TRUE),
+    mediana_total_m = median(distancia_total_m, na.rm = TRUE),
+    sd_total_m = sd(distancia_total_m, na.rm = TRUE),
+    minimo_total_m = min(distancia_total_m, na.rm = TRUE),
+    maximo_total_m = max(distancia_total_m, na.rm = TRUE),
+    media_alta_int_90 = mean(distancia_alta_intensidad_90, na.rm = TRUE),
+    media_sprint_90 = mean(distancia_sprint_90, na.rm = TRUE),
+    media_velocidad_max_kmh = mean(velocidad_max_kmh, na.rm = TRUE),
+    .groups = "drop"
+  )
+knitr::kable(resumen, digits = 1, caption = "Resumen de las métricas por grupo posicional")
+```
+
+## Distribución de la distancia total
+
+```{r}
+ggplot2::ggplot(datos_pos, ggplot2::aes(x = grupo_posicion, y = distancia_total_m, fill = grupo_posicion)) +
+  ggplot2::geom_boxplot(alpha = 0.75, show.legend = FALSE) +
+  ggplot2::labs(x = "Grupo posicional", y = "Distancia total (m)", title = "Distancia total recorrida por grupo") +
+  ggplot2::theme_minimal()
+```
+
+## Distancia de sprint por 90 minutos
+
+```{r}
+ggplot2::ggplot(resumen, ggplot2::aes(x = grupo_posicion, y = media_sprint_90, fill = grupo_posicion)) +
+  ggplot2::geom_col(show.legend = FALSE) +
+  ggplot2::labs(x = "Grupo posicional", y = "Distancia media de sprint (m/90 min)", title = "Promedio descriptivo de distancia de sprint") +
+  ggplot2::theme_minimal()
+```
+
+## Minutos y distancia total
+
+```{r}
+ggplot2::ggplot(datos_pos, ggplot2::aes(x = minutos, y = distancia_total_m, color = grupo_posicion)) +
+  ggplot2::geom_point(alpha = 0.8) +
+  ggplot2::geom_smooth(method = "lm", se = FALSE, linewidth = 0.6) +
+  ggplot2::labs(x = "Minutos disputados", y = "Distancia total (m)", color = "Posición", title = "Participación y distancia recorrida") +
+  ggplot2::theme_minimal()
+```
+
+## Distribución de distancia de alta intensidad
+
+```{r}
+ggplot2::ggplot(datos_pos, ggplot2::aes(x = distancia_alta_intensidad_m, fill = grupo_posicion)) +
+  ggplot2::geom_histogram(bins = 12, alpha = 0.65, position = "identity") +
+  ggplot2::labs(x = "Distancia de alta intensidad (m)", y = "Número de registros", fill = "Posición", title = "Distribución de la distancia de alta intensidad") +
+  ggplot2::theme_minimal()
+```
+
+## Comparación exploratoria
+
+```{r}
+kw <- stats::kruskal.test(distancia_total_90 ~ grupo_posicion, data = datos_pos)
+knitr::kable(data.frame(Estadistico = unname(kw$statistic), gl = unname(kw$parameter), `p-valor` = kw$p.value), digits = 4,
+             caption = "Kruskal–Wallis para distancia total por 90 minutos")
+```
+
+El contraste se presenta como exploración de esta tabla. Un resultado pequeño de p no elimina las limitaciones de tamaño muestral, observaciones repetidas, diferencias entre partidos y plantel. No se aplican pruebas múltiples ni modelos de ajuste.
+
+En los datos observados, la media de distancia total fue de `r round(resumen$media_total_m[resumen$grupo_posicion == "Centrocampistas"])` m para centrocampistas, `r round(resumen$media_total_m[resumen$grupo_posicion == "Defensas"])` m para defensas y `r round(resumen$media_total_m[resumen$grupo_posicion == "Atacantes"])` m para atacantes. La distancia de sprint media por 90 minutos fue de `r round(resumen$media_sprint_90[resumen$grupo_posicion == "Atacantes"])` m en atacantes y `r round(resumen$media_sprint_90[resumen$grupo_posicion == "Centrocampistas"])` m en centrocampistas. Para la distancia total por 90 minutos, Kruskal–Wallis dio un p-valor de `r format.pval(kw$p.value, digits = 3)`. Este contraste no encontró evidencia estadística de diferencias entre los tres grupos en esta muestra; no confirma que las demandas sean iguales.
+
+# Discusión y conclusiones
+
+Las tablas y figuras permiten describir cómo se distribuyen las métricas en los tres grupos de posición de esta muestra. Las diferencias observadas son específicas del conjunto *Physical Profiling* y no deben trasladarse directamente a futbolistas de otros equipos, categorías o temporadas. Las medidas por 90 minutos ayudan a contextualizar tiempos de juego distintos, aunque siguen sujetas a los umbrales y protocolos originales.
+
+La fuente seleccionada no proporciona recuento de sprints, aceleraciones/desaceleraciones, marcador final ni jornada numerada en la hoja analizada. Por eso se compara distancia de sprint, no número de sprints, y no se construye un índice compuesto. Un siguiente estudio con más equipos y temporada completa podría incluir esos factores si el club dispone de datos autorizados.
+
+# Reproducibilidad y gestión
+
+El análisis se genera en Quarto con R. `scripts/00_download_data.R` reconstruye el CSV desde Zenodo y `scripts/01_prepare_data.R` valida variables, elimina duplicados exactos y crea métricas derivadas. El README explica la estructura y el uso de Git. Los datos originales privados de clubes no se necesitan para reproducir este caso.
+
+# Referencias
+
+- Kemi, O. J. (2024). *Physical Profiling*. Zenodo. <https://doi.org/10.5281/zenodo.13919745>. Licencia CC BY 4.0.
+- StatsBomb. *Open Data*. <https://github.com/statsbomb/open-data>.
